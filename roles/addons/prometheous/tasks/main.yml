@@ -43,4 +43,9 @@
     owner: root
     group: root
     mode: 0644
-  notify: "Restart Docker"
+
+- name: Restart docker
+  systemd:
+    name: docker
+    state: restarted
+    daemon_reload: yes

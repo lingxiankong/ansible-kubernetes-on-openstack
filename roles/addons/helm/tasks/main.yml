@@ -1,0 +1,47 @@
+---
+- name: Ensure tiller directory
+  file: path={{ ansible_env.HOME }}/addons/tiller state=directory mode=0755
+
+- name: Create tiller RBAC manifest file
+  copy:
+    src: tiller_rbac.yaml
+    dest: "{{ ansible_env.HOME }}/addons/tiller/tiller_rbac.yaml"
+    force: yes
+
+- name: Install tiller RBAC
+  shell: kubectl apply -f {{ ansible_env.HOME }}/addons/tiller/tiller_rbac.yaml
+
+- name: Retrieve helm binary archive
+  unarchive:
+    src: "{{ tiller_url }}"
+    dest: /tmp
+    remote_src: yes
+    creates: /usr/local/bin/helm
+
+- name: Move helm binary into place
+  command: >
+    cp /tmp/linux-amd64/helm /usr/local/bin/helm
+    creates=/usr/local/bin/helm
+
+- name: Set up Helm and Tiller
+  command: helm init --service-account tiller
+  register: helm_init_result
+  changed_when: "'already installed' not in helm_init_result.stdout"
+
+- name: Get tiller's connection info
+  shell: |
+    kubectl -n kube-system  get service tiller-deploy -o json | jq '{helm_host: .spec.clusterIP, helm_port: .spec.ports[0].port}'
+  register: tiller_service
+
+- name: Set the Helm host and port.
+  set_fact:
+    helm_host: "{{ (tiller_service.stdout | from_json)['helm_host'] }}"
+    helm_port: "{{ (tiller_service.stdout | from_json)['helm_port'] }}"
+
+- name: Wait for tiller to become responsive
+  wait_for:
+    host: "{{ helm_host }}"
+    port: "{{ helm_port }}"
+    state: started
+    timeout: 60
+    sleep: 3

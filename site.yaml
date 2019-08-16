@@ -82,7 +82,7 @@
     - docker
     - k8s_cli
 
-- import_playbook: reset_k8s.yaml rebuild={{ rebuild | default(false) }}
+- import_playbook: reset_k8s.yaml rebuild={{ rebuild | default("false") }}
 
 - name: Set up k8s master
   hosts: k8s_master
@@ -125,3 +125,12 @@
         server: "{{ reource_prefix }}-worker-{{ item }}"
       loop: "{{ range(0, worker_node_number|int)|list }}"
       when: remove_worker_floatingip
+
+- name: Install k8s addons
+  hosts: k8s_master
+  become: true
+  become_method: sudo
+  gather_facts: true
+
+  roles:
+    - addons/helm
