@@ -1,20 +1,21 @@
 ---
-- name: Create cloud-config configmap for ccm
-  shell: kubectl create configmap cloud-config --from-file=/etc/kubernetes/cloud-config -n kube-system
-  ignore_errors: True
-
 - name: Ensure CCM manifests directory
   file: path={{ ansible_env.HOME }}/openstack-cloud-controller-manager state=directory mode=0755
 
-- name: Create CCM manifest file
+- name: Copy the cloud-config manifest file
   template:
-    src: openstack-cloud-controller-manager.yaml.j2
+    src: cloud-config.j2
+    dest: "{{ ansible_env.HOME }}/openstack-cloud-controller-manager/cloud-config.yaml"
+
+- name: Copy CCM manifest file
+  template:
+    src: openstack-cloud-controller-manager.j2
     dest: "{{ ansible_env.HOME }}/openstack-cloud-controller-manager/openstack-cloud-controller-manager.yaml"
 
-- name: Create CCM rolebinding manifest file
+- name: Create CCM RBAC manifest file
   copy:
     src: cloud-controller-manager-role-bindings.yaml
     dest: "{{ ansible_env.HOME }}/openstack-cloud-controller-manager/cloud-controller-manager-role-bindings.yaml"
 
-- name: Install cloud-controller-manager
+- name: Install CCM
   shell: kubectl apply -f {{ ansible_env.HOME }}/openstack-cloud-controller-manager/

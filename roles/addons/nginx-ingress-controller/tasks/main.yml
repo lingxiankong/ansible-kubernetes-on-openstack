@@ -1,0 +1,25 @@
+---
+- name: Ensure nginx-ingress-controller directory
+  file: path={{ ansible_env.HOME }}/addons/nginx-ingress-controller state=directory mode=0755
+
+- name: Copy helm value file for nginx-ingress-controller
+  copy:
+    src: nginx-ingress-controller-helm-values.yaml
+    dest: "{{ ansible_env.HOME }}/addons/nginx-ingress-controller/values.yaml"
+    force: yes
+
+- name: Check if the helm nginx-ingress is deployed
+  shell: helm list | grep nginx-ingress
+  register: check_nginx_ingress
+  ignore_errors: True
+
+- name: Install nginx-ingress-controller
+  shell: helm install stable/nginx-ingress --name nginx-ingress --namespace nginx-ingress -f {{ ansible_env.HOME }}/addons/nginx-ingress-controller/values.yaml
+  when: check_nginx_ingress.rc != 0
+
+- name: Wait for nginx-ingress-controller service
+  shell: kubectl get svc nginx-ingress-controller | grep pending
+  ignore_errors: True
+  register: check_service
+  until: check_service.rc != 0
+  retries: 180

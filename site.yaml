@@ -82,7 +82,7 @@
     - docker
     - k8s_cli
 
-- import_playbook: reset_k8s.yaml rebuild={{ rebuild | default("false") }}
+- import_playbook: reset_k8s.yaml
 
 - name: Set up k8s master
   hosts: k8s_master
@@ -134,3 +134,4 @@
 
   roles:
     - addons/helm
+    - addons/nginx-ingress-controller

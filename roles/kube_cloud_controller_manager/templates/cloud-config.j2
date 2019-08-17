@@ -1,0 +1,19 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: cloud-config
+  namespace: kube-system
+data:
+  cloud-config: |
+    [Global]
+    auth-url={{ auth_url }}
+    user-id={{ user_id }}
+    password={{ password }}
+    tenant-id={{ tenant_id }}
+    region={{ region }}
+    [LoadBalancer]
+    use-octavia={{ support_octavia }}
+    subnet-id={{ subnet_id }}
+    create-monitor=no
+    [BlockStorage]
+    bs-version=v2
