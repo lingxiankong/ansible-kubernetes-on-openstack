@@ -1,51 +1,13 @@
 ---
-# apt-get install -y apt-transport-https ca-certificates curl
-- name: Install packages
-  apt:
-    name: "{{ packages }}"
-    state: present
-    update_cache: yes
-  vars:
-    packages:
-      # allowing you to add external HTTPS sources to your APT sources list.
-      - apt-transport-https
-      - ca-certificates
-      - curl
+- name: Ensure dashboard addon directory
+  file: path={{ ansible_env.HOME }}/addons/dashboard state=directory mode=0755
 
-# curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-- name: Add Docker’s official GPG key
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+- name: Copy manifest files
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ ansible_env.HOME }}/addons/dashboard/{{ item }}"
+  loop:
+    - dashboard.yaml
 
-# add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
-- name: Set up the stable repository
-  apt_repository: repo='deb https://download.docker.com/linux/ubuntu bionic stable' state=present
-
-# apt-get update; apt install -y docker-ce=<version>
-- name: Install docker-ce
-  apt:
-    name: docker-ce={{ docker_version }}
-    state: present
-    update_cache: yes
-
-- name: Config docker
-  copy:
-    content: |
-      {
-        "log-driver": "json-file",
-        "exec-opts": ["native.cgroupdriver=systemd"],
-        "log-opts": {
-          "max-size": "50m"
-        }
-      }
-    dest: /etc/docker/daemon.json
-    owner: root
-    group: root
-    mode: 0644
-
-- name: Restart docker
-  systemd:
-    name: docker
-    state: restarted
-    daemon_reload: yes
+- name: Install dashboard
+  shell: kubectl apply -f {{ ansible_env.HOME }}/addons/dashboard/dashboard.yaml
