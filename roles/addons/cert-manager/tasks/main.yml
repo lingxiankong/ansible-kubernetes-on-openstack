@@ -1,0 +1,38 @@
+---
+- name: Ensure cert-manager addon directory
+  file: path={{ ansible_env.HOME }}/addons/cert-manager state=directory mode=0755
+
+- name: Copy manifest files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ ansible_env.HOME }}/addons/cert-manager/{{ item }}"
+  loop:
+    - namespace.yaml
+
+- name: Copy manifest template files
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ ansible_env.HOME }}/addons/cert-manager/{{ item }}"
+  loop:
+    - cluster_issuer.yaml
+
+- name: Create cert-manager namespace
+  shell: kubectl apply -f {{ ansible_env.HOME }}/addons/cert-manager/namespace.yaml
+
+- name: Install cert-manager
+  shell: kubectl apply -f {{ cert_manager_url }}
+
+- name: Wait for cert-manager up and running
+  shell: kubectl -n cert-manager get po | grep Running | wc -l
+  register: check_cert_manager
+  until: check_cert_manager.stdout|int == 2
+  retries: 180
+
+- name: Create letsencrypt-staging CA
+  shell: kubectl apply -f {{ ansible_env.HOME }}/addons/cert-manager/cluster_issuer.yaml
+
+- name: Make sure the letsencrypt-staging secret is created
+  shell: kubectl -n cert-manager get secret | grep letsencrypt-staging | wc -l
+  register: check_secret
+  until: check_secret.stdout|int == 1
+  retries: 15
