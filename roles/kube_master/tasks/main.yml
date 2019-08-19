@@ -39,7 +39,7 @@
         daemon_reload: yes
         name: kubelet
     - name: Init master
-      shell: kubeadm init --config {{ ansible_env.HOME }}/kubeadm.conf
+      shell: kubeadm init --config {{ ansible_env.HOME }}/kubeadm.conf --experimental-upload-certs
       register: kubeadm_init
     - fail:
         msg: "kubeadm init command failed."

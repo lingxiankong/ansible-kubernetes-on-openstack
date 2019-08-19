@@ -2,8 +2,8 @@
 reource_prefix: "lingxiank8s"
 
 # NOTE: Only 1 master node is supported for now
-master_node_number: 1
-worker_node_number: 3
+master_node_number: 3
+worker_node_number: 1
 boot_from_vol: false
 image: "6f526ede-0b07-4e7f-be83-84f474ebcd2e"
 key_name: "lingxian_key"

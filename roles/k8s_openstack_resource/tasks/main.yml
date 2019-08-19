@@ -94,7 +94,7 @@
     name: "{{ reource_prefix }}-master-{{ item }}"
     boot_from_volume: "{{ boot_from_vol | bool }}"
     image: "{{ image }}"
-    volume_size: 15
+    volume_size: 10
     key_name: "{{ key_name }}"
     nics: port-name={{ reource_prefix }}-master-{{ item }}
     security_groups:
@@ -114,7 +114,7 @@
     name: "{{ reource_prefix }}-worker-{{ item }}"
     boot_from_volume: "{{ boot_from_vol | bool }}"
     image: "{{ image }}"
-    volume_size: 15
+    volume_size: 10
     key_name: "{{ key_name }}"
     nics: port-name={{ reource_prefix }}-worker-{{ item }}
     security_groups:
@@ -165,6 +165,19 @@
     subnet_id: "{{ subnet.id }}"
   with_items: "{{ openstack_servers }}"
 
+- name: Setup master 0 group
+  add_host:
+    name: "{{ item.name }}"
+    groups: k8s_master_0
+    ansible_user: ubuntu
+    ansible_host: "{{ item.public_v4 }}"
+    ansible_local_ip: "{{ item.private_v4 }}"
+    ansible_public_ip: "{{ item.public_v4 }}"
+    ansible_ssh_private_key_file: "{{ private_key_file }}"
+    subnet_id: "{{ subnet.id }}"
+  when: '"master-0" in item.name'
+  with_items: "{{ openstack_servers }}"
+
 - name: Setup master group
   add_host:
     name: "{{ item.name }}"
@@ -175,7 +188,7 @@
     ansible_public_ip: "{{ item.public_v4 }}"
     ansible_ssh_private_key_file: "{{ private_key_file }}"
     subnet_id: "{{ subnet.id }}"
-  when: item.name | regex_search('(master)')
+  when: item.name | regex_search('(master)') and "master-0" not in item.name
   with_items: "{{ openstack_servers }}"
 
 - name: Setup nodes group
@@ -190,3 +203,44 @@
     subnet_id: "{{ subnet.id }}"
   when: item.name | regex_search('(worker)')
   with_items: "{{ openstack_servers }}"
+
+- name: Delete load balancer if exists
+  shell: openstack loadbalancer delete {{ reource_prefix }}-lb --cascade
+  ignore_errors: True
+
+- name: Make sure the previous load balancer is deleted
+  shell: openstack loadbalancer list | grep {{ reource_prefix }}-lb
+  register: result
+  until: result.rc == 1
+  retries: 5
+  delay: 10
+  ignore_errors: True
+
+- name: Create load balancer for k8s api server
+  os_loadbalancer:
+    name: "{{ reource_prefix }}-lb"
+    state: present
+    vip_subnet: "{{ subnet.id }}"
+    auto_public_ip: yes
+    public_network: "{{ external_network_name }}"
+    listeners:
+      - name: "{{ reource_prefix }}-listener"
+        protocol: TCP
+        protocol_port: 6443
+        pool:
+          name: "{{ reource_prefix }}-pool"
+          protocol: TCP
+    wait: yes
+    timeout: 600
+  register: k8s_loadbalancer
+
+- name: Ensure all the master nodes are added in the load balancer
+  os_member:
+    name: "{{ item }}"
+    pool: "{{ reource_prefix }}-pool"
+    address: "{{ hostvars[item]['ansible_local_ip'] }}"
+    protocol_port: 6443
+  loop: "{{ groups['k8s_master'] }}"
+
+- name: Get load balancer vip address
+  set_fact: lb_address={{ k8s_loadbalancer.loadbalancer.vip_address }}
