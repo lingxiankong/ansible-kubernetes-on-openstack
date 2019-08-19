@@ -132,6 +132,15 @@
   become_method: sudo
   gather_facts: true
 
+  vars:
+    enable_addons: false
+
   roles:
-    - addons/helm
-    - addons/nginx-ingress-controller
+    - role: addons/helm
+      when: enable_addons|bool
+    - role: addons/nginx-ingress-controller
+      when: enable_addons|bool
+    - role: addons/cert-manager
+      when: enable_addons|bool
+    - role: addons/dashboard
+      when: enable_addons|bool
