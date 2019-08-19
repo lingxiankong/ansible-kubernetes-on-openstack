@@ -97,6 +97,8 @@
     volume_size: 15
     key_name: "{{ key_name }}"
     nics: port-name={{ reource_prefix }}-master-{{ item }}
+    security_groups:
+      - "{{ reource_prefix }}-master"
     flavor: "{{ flavor }}"
     terminate_volume: true
     # Do not allocate floating ip
@@ -115,6 +117,8 @@
     volume_size: 15
     key_name: "{{ key_name }}"
     nics: port-name={{ reource_prefix }}-worker-{{ item }}
+    security_groups:
+      - "{{ reource_prefix }}-worker"
     flavor: "{{ flavor }}"
     terminate_volume: true
     # Do not allocate floating ip
