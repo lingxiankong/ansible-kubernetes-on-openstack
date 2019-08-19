@@ -51,6 +51,10 @@
         - /home/ubuntu
   when: check_kubectl.rc != 0
 
+- name: Allow pod on master
+  shell: kubectl taint nodes --all node-role.kubernetes.io/master-
+  when: allow_pod_on_master|bool
+
 - name: Install Calico RBAC
   shell: kubectl apply -f {{ item }}
   loop:

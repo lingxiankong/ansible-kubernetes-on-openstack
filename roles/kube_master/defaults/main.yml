@@ -1,6 +1,7 @@
 ---
 k8s_version: "1.14.1"
 pod_ip_range: "192.168.0.0/16"
+allow_pod_on_master: false
 
 auth_url: http://192.168.121.15/identity/v3/
 user_id: 3fd32295751a41aca601021eba681a29
