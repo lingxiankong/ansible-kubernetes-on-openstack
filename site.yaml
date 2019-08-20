@@ -31,15 +31,6 @@
     - name: Install python 2
       raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
 
-    - name: Install pip
-      shell: which pip || (curl https://bootstrap.pypa.io/get-pip.py | python - && rm -f get-pip.py)
-
-    - name: Pin pip to 9.0.3
-      shell: pip install pip==9.0.3
-
-    - name: Gather facts after python installation
-      setup: filter=ansible_*
-
     - name: Install packages
       apt:
         name: "{{ packages }}"
@@ -47,6 +38,7 @@
         update_cache: yes
       vars:
         packages:
+          - python-pip
           - ansible
           - unzip
           - build-essential
@@ -60,8 +52,9 @@
           - zlib1g-dev
           - jq
           - net-tools
-          - atop
-          - snapd
+
+    - name: Pin pip to 9.0.3
+      shell: pip install pip==9.0.3
 
     - name: Install pypi libraries
       pip:
@@ -71,6 +64,9 @@
         libraries:
           - python-openstackclient
           - httpie
+
+    - name: Gather facts after python installation
+      setup: filter=ansible_*
 
     - name: Build hosts file
       lineinfile: dest=/etc/hosts line="{{ ansible_local_ip }} {{ ansible_hostname }}" state=present
