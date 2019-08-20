@@ -31,15 +31,6 @@
     - name: Install python 2
       raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
 
-    - name: Install pip
-      shell: which pip || (curl https://bootstrap.pypa.io/get-pip.py | python - && rm -f get-pip.py)
-
-    - name: Pin pip to 9.0.3
-      shell: pip install pip==9.0.3
-
-    - name: Gather facts after python installation
-      setup: filter=ansible_*
-
     - name: Install packages
       apt:
         name: "{{ packages }}"
@@ -47,6 +38,7 @@
         update_cache: yes
       vars:
         packages:
+          - python-pip
           - ansible
           - unzip
           - build-essential
@@ -60,8 +52,9 @@
           - zlib1g-dev
           - jq
           - net-tools
-          - atop
-          - snapd
+
+    - name: Pin pip to 9.0.3
+      shell: pip install pip==9.0.3
 
     - name: Install pypi libraries
       pip:
@@ -72,6 +65,9 @@
           - python-openstackclient
           - httpie
 
+    - name: Gather facts after python installation
+      setup: filter=ansible_*
+
     - name: Build hosts file
       lineinfile: dest=/etc/hosts line="{{ ansible_local_ip }} {{ ansible_hostname }}" state=present
 
@@ -81,3 +77,43 @@
   roles:
     - docker
     - k8s_cli
+
+- name: Initialize the first master node
+  hosts: k8s_master_0
+  become: true
+  become_method: sudo
+  gather_facts: true
+
+  roles:
+    - role: kube_master_primary
+      lb_address: "{{ hostvars['localhost']['lb_address'] }}"
+
+- name: Initialize the other master nodes
+  hosts: k8s_master
+  serial: 1
+  become: true
+  become_method: sudo
+  gather_facts: true
+
+  roles:
+    - role: kube_master_others
+      lb_address: "{{ hostvars['localhost']['lb_address'] }}"
+
+- name: Initialize the worker nodes
+  hosts: k8s_worker
+  become: true
+  become_method: sudo
+  gather_facts: true
+
+  roles:
+    - role: kube_worker
+      lb_address: "{{ hostvars['localhost']['lb_address'] }}"
+
+- name: Set up cloud-controller-manager
+  hosts: k8s_master_0
+  become: true
+  become_method: sudo
+  gather_facts: true
+
+  roles:
+    - kube_cloud_controller_manager

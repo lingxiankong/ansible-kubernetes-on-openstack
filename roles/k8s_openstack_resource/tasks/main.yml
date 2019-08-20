@@ -191,10 +191,10 @@
   when: item.name | regex_search('(master)') and "master-0" not in item.name
   with_items: "{{ openstack_servers }}"
 
-- name: Setup nodes group
+- name: Setup worker group
   add_host:
     name: "{{ item.name }}"
-    groups: k8s_nodes
+    groups: k8s_worker
     ansible_user: ubuntu
     ansible_host: "{{ item.public_v4 }}"
     ansible_local_ip: "{{ item.private_v4 }}"
@@ -204,17 +204,17 @@
   when: item.name | regex_search('(worker)')
   with_items: "{{ openstack_servers }}"
 
-- name: Delete load balancer if exists
-  shell: openstack loadbalancer delete {{ reource_prefix }}-lb --cascade
-  ignore_errors: True
+# - name: Delete load balancer if exists
+#   shell: openstack loadbalancer delete {{ reource_prefix }}-lb --cascade
+#   ignore_errors: True
 
-- name: Make sure the previous load balancer is deleted
-  shell: openstack loadbalancer list | grep {{ reource_prefix }}-lb
-  register: result
-  until: result.rc == 1
-  retries: 5
-  delay: 10
-  ignore_errors: True
+# - name: Make sure the previous load balancer is deleted
+#   shell: openstack loadbalancer list | grep {{ reource_prefix }}-lb
+#   register: result
+#   until: result.rc == 1
+#   retries: 5
+#   delay: 10
+#   ignore_errors: True
 
 - name: Create load balancer for k8s api server
   os_loadbalancer:
@@ -233,6 +233,14 @@
     wait: yes
     timeout: 600
   register: k8s_loadbalancer
+
+- name: Add master 0 to the load balancer
+  os_member:
+    name: "{{ item }}"
+    pool: "{{ reource_prefix }}-pool"
+    address: "{{ hostvars[item]['ansible_local_ip'] }}"
+    protocol_port: 6443
+  loop: "{{ groups['k8s_master_0'] }}"
 
 - name: Ensure all the master nodes are added in the load balancer
   os_member:

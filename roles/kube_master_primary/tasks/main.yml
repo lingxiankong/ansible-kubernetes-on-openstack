@@ -1,0 +1,75 @@
+---
+- name: Prepare kubeadm.conf
+  template:
+    src: kubeadm.conf.j2
+    dest: "{{ ansible_env.HOME }}/kubeadm.conf"
+
+- name: Make sure /etc/kubernetes exists
+  file:
+    path: /etc/kubernetes
+    state: directory
+
+- name: Prepare openstack config file
+  template:
+    src: cloud-config.j2
+    dest: /etc/kubernetes/cloud-config
+
+- name: Check if kubelet config file needs change
+  shell: grep -q "external" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+  register: check_kubelet
+  ignore_errors: True
+
+- name: Modify kubelet arguments
+  replace:
+    path: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+    regexp: '(.*)KUBELET_KUBECONFIG_ARGS=(.*)$'
+    replace: '\1KUBELET_KUBECONFIG_ARGS=--cloud-provider=external \2'
+  when: check_kubelet.rc != 0
+
+- name: Verify if k8s is already up and running
+  raw: kubectl get node
+  register: check_kubectl
+  ignore_errors: True
+
+- name: Initialize k8s master node
+  block:
+    - name: restart kubelet service
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: kubelet
+    - name: Init master
+      shell: kubeadm init --config {{ ansible_env.HOME }}/kubeadm.conf --experimental-upload-certs
+      register: kubeadm_init
+    - fail:
+        msg: "kubeadm init command failed."
+      when: kubeadm_init.stdout.find("initialized successfully") == -1
+    - name: Prepare kube config
+      shell: mkdir -p {{ item }}/.kube && cp -a /etc/kubernetes/admin.conf {{ item }}/.kube/config && chmod 755 {{ item }}/.kube/config
+      loop:
+        - "{{ ansible_env.HOME }}"
+        - /home/ubuntu
+    - name: Save the master join certificate key
+      set_fact:
+        certificate_key: "{{ kubeadm_init.stdout | regex_search('--experimental-control-plane --certificate-key (.*)\\n', '\\1') | first }}"
+    - debug: var=certificate_key
+  when: check_kubectl.rc != 0
+
+- name: Allow pod on master
+  shell: kubectl taint nodes --all node-role.kubernetes.io/master-
+  when: allow_pod_on_master|bool
+
+- name: Download calico manifest file if needed
+  get_url:
+    url: https://docs.projectcalico.org/v3.7/manifests/calico.yaml
+    dest: "{{ ansible_env.HOME }}/calico.yaml"
+    force: no
+
+- name: Modify the pod cidr in calico manifest file
+  replace:
+    path: "{{ ansible_env.HOME }}/calico.yaml"
+    regexp: '(^.*value: )"192.168.*'
+    replace: '\1"{{ pod_ip_range }}"'
+
+- name: Install Calico
+  shell: kubectl apply -f {{ ansible_env.HOME }}/calico.yaml

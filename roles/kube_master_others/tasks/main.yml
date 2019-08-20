@@ -1,9 +1,4 @@
 ---
-- name: Prepare kubeadm.conf
-  template:
-    src: kubeadm.conf.j2
-    dest: "{{ ansible_env.HOME }}/kubeadm.conf"
-
 - name: Make sure /etc/kubernetes exists
   file:
     path: /etc/kubernetes
@@ -38,12 +33,13 @@
         state: restarted
         daemon_reload: yes
         name: kubelet
-    - name: Init master
-      shell: kubeadm init --config {{ ansible_env.HOME }}/kubeadm.conf --experimental-upload-certs
-      register: kubeadm_init
+    # JoinConfiguration does not support --experimental-control-plane and --certificate-key yet in 1.14 (even not in 1.15)
+    - name: Join master node
+      shell: kubeadm join {{ lb_address }}:6443 --token 9a08jv.c0izixklcxtmnze7 --discovery-token-unsafe-skip-ca-verification --experimental-control-plane --certificate-key {{ hostvars[groups['k8s_master_0'][0]]['certificate_key'] }}
+      register: kubeadm_join
     - fail:
-        msg: "kubeadm init command failed."
-      when: kubeadm_init.stdout.find ("kubeadm join") == -1
+        msg: "kubeadm join command failed."
+      when: kubeadm_join.stdout.find ("node has joined the cluster") == -1
     - name: Prepare kube config
       shell: mkdir -p {{ item }}/.kube && cp -a /etc/kubernetes/admin.conf {{ item }}/.kube/config && chmod 755 {{ item }}/.kube/config
       loop:
@@ -54,23 +50,4 @@
 - name: Allow pod on master
   shell: kubectl taint nodes --all node-role.kubernetes.io/master-
   when: allow_pod_on_master|bool
-
-- name: Install Calico RBAC
-  shell: kubectl apply -f {{ item }}
-  loop:
-    - https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
-
-- name: Download calico manifest file if needed
-  get_url:
-    url: https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
-    dest: "{{ ansible_env.HOME }}/calico.yaml"
-    force: no
-
-- name: Modify the pod cidr in calico manifest file
-  replace:
-    path: "{{ ansible_env.HOME }}/calico.yaml"
-    regexp: '(^.*value: )"192.168.*'
-    replace: '\1"{{ pod_ip_range }}"'
-
-- name: Install Calico
-  shell: kubectl apply -f {{ ansible_env.HOME }}/calico.yaml
+  ignore_errors: True
