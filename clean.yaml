@@ -1,0 +1,58 @@
+---
+- name: Deploy and prepare instances in OpenStack
+  hosts: localhost
+
+  vars:
+    reource_prefix: "lingxiank8s"
+    master_node_number: 1
+    worker_node_number: 2
+
+  tasks:
+    - name: Remove load balancer
+      os_loadbalancer:
+        name: "{{ reource_prefix }}-lb"
+        state: absent
+        delete_public_ip: true
+        wait: yes
+
+    - name: Remove master nodes
+      os_server:
+        state: absent
+        name: "{{ reource_prefix }}-master-{{ item }}"
+      loop: "{{ range(0, master_node_number|int)|list }}"
+
+    - name: Remove worker nodes
+      os_server:
+        state: absent
+        name: "{{ reource_prefix }}-worker-{{ item }}"
+      loop: "{{ range(0, worker_node_number|int)|list }}"
+
+    - name: Remove master ports
+      os_port:
+        state: absent
+        name: "{{ reource_prefix }}-master-{{ item }}"
+      loop: "{{ range(0, master_node_number|int)|list }}"
+
+    - name: Remove worker ports
+      os_port:
+        state: absent
+        name: "{{ reource_prefix }}-worker-{{ item }}"
+      loop: "{{ range(0, worker_node_number|int)|list }}"
+
+    - name: Remove security groups
+      os_security_group:
+        name: "{{ reource_prefix }}-{{ item }}"
+        state: absent
+      loop:
+        - master
+        - worker
+
+    - name: Detach subnet from router
+      os_router:
+        name: "{{ reource_prefix }}-router"
+        state: absent
+
+    - name: Remove network
+      os_network:
+        name: "{{ reource_prefix }}-network"
+        state: absent
