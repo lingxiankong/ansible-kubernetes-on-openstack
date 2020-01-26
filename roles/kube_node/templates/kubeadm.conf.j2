@@ -5,3 +5,6 @@ discovery:
     apiServerEndpoint: {{ hostvars[groups['k8s_master'][0]]['ansible_local_ip'] }}:6443
     token: 9a08jv.c0izixklcxtmnze7
     unsafeSkipCAVerification: true
+nodeRegistration:
+  kubeletExtraArgs:
+    cloud-provider: "external"

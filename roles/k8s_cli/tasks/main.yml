@@ -21,10 +21,4 @@
       - kubectl={{ k8s_version }}-00
       - kubeadm={{ k8s_version }}-00
 
-- import_tasks: install_kube_prompt_tasks.yml
-
-- name: create alias for cli
-  lineinfile:
-    path: /etc/bash.bashrc
-    create: true
-    line: 'alias k="/usr/bin/kubectl"'
+# - import_tasks: install_kube_prompt_tasks.yml

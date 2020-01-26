@@ -2,7 +2,6 @@
 ---
 - name: Deploy and prepare instances in OpenStack
   hosts: localhost
-
   vars:
     reource_prefix: "lingxiank8s"
     worker_node_number: 2
@@ -14,7 +13,6 @@
     external_network_name: "vlan2803"
     subnet_cidr: "10.1.0.0/26"
     pod_ip_range: 192.168.0.0/16
-
   roles:
     - k8s_openstack_resource
 
@@ -23,14 +21,11 @@
   become: true
   become_method: sudo
   gather_facts: false
-
   pre_tasks:
     - name: Wait for cloud init to finish
       raw: cloud-init status --wait
-
-    - name: Install python 2
-      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
-
+    - name: Install python 3
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python3-minimal)
     - name: Install packages
       apt:
         name: "{{ packages }}"
@@ -38,12 +33,12 @@
         update_cache: yes
       vars:
         packages:
-          - python-pip
+          - python3-pip
           - ansible
           - unzip
           - build-essential
-          - python-dev
-          - python-setuptools
+          - python3-dev
+          - python3-setuptools
           - libffi-dev
           - libxslt1-dev
           - libxml2-dev
@@ -52,10 +47,8 @@
           - zlib1g-dev
           - jq
           - net-tools
-
     - name: Pin pip to 9.0.3
-      shell: pip install pip==9.0.3
-
+      shell: pip3 install pip==9.0.3
     - name: Install pypi libraries
       pip:
         name: "{{ libraries }}"
@@ -64,16 +57,12 @@
         libraries:
           - python-openstackclient
           - httpie
-
     - name: Gather facts after python installation
       setup: filter=ansible_*
-
     - name: Build hosts file
       lineinfile: dest=/etc/hosts line="{{ ansible_local_ip }} {{ ansible_hostname }}" state=present
-
     - name: Disable swap memory
       shell: swapoff -a
-
   roles:
     - docker
     - k8s_cli
@@ -85,7 +74,6 @@
   become: true
   become_method: sudo
   gather_facts: true
-
   roles:
     - kube_master
 
@@ -94,7 +82,6 @@
   become: true
   become_method: sudo
   gather_facts: true
-
   roles:
     - kube_node
 
@@ -103,16 +90,13 @@
   become: true
   become_method: sudo
   gather_facts: true
-
   roles:
     - kube_cloud_controller_manager
 
 - name: Clean up the installation
   hosts: localhost
-
   vars:
     remove_worker_floatingip: false
-
   tasks:
     - name: Remove worker node floating IP if needed
       os_floating_ip:
@@ -127,10 +111,8 @@
   become: true
   become_method: sudo
   gather_facts: true
-
   vars:
     enable_addons: false
-
   roles:
     - role: addons/helm
       when: enable_addons|bool

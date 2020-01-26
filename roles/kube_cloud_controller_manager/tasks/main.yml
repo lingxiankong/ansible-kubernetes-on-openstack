@@ -19,3 +19,20 @@
 
 - name: Install CCM
   shell: kubectl apply -f {{ ansible_env.HOME }}/openstack-cloud-controller-manager/
+
+- name: Ensure Cinser CSI plugin directory
+  file: path={{ ansible_env.HOME }}/openstack-cinder-csi-plugin state=directory mode=0755
+
+- name: Copy Cinser CSI plugin manifest files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ ansible_env.HOME }}/openstack-cinder-csi-plugin/{{ item }}"
+  loop:
+    - cinder-csi-controllerplugin.yaml
+    - cinder-csi-controllerplugin-rbac.yaml
+    - cinder-csi-nodeplugin.yaml
+    - cinder-csi-nodeplugin-rbac.yaml
+    - csi-cinder-driver.yaml
+
+- name: Install Cinser CSI plugin
+  shell: kubectl apply -f {{ ansible_env.HOME }}/openstack-cinder-csi-plugin/

@@ -1,6 +1,10 @@
-# This YAML file contains driver-registrar & csi driver nodeplugin API objects,
-# which are necessary to run csi nodeplugin for cinder.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-cinder-node
+  namespace: kube-system
 
+---
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -15,13 +19,12 @@ spec:
       labels:
         app: csi-cinder-nodeplugin
     spec:
-      serviceAccount: csi-cinder-node-sa
+      serviceAccount: csi-cinder-node
       hostNetwork: true
       containers:
         - name: node-driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
           args:
-            - "--v=5"
             - "--csi-address=$(ADDRESS)"
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
           lifecycle:
@@ -49,9 +52,10 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: docker.io/k8scloudprovider/cinder-csi-plugin:v1.15.0
+          image: docker.io/k8scloudprovider/cinder-csi-plugin:latest
           args :
             - /bin/cinder-csi-plugin
+            - "--v=5"
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--cloud-config=$(CLOUD_CONFIG)"
@@ -63,14 +67,11 @@ spec:
             - name: CSI_ENDPOINT
               value: unix://csi/csi.sock
             - name: CLOUD_CONFIG
-              value: /etc/config/cloud.conf
+              value: /etc/config/cloud-config
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-            - name: pods-mount-dir
-              mountPath: /var/lib/kubelet/pods
-              mountPropagation: "Bidirectional"
             - name: kubelet-dir
               mountPath: /var/lib/kubelet
               mountPropagation: "Bidirectional"
@@ -96,10 +97,6 @@ spec:
           hostPath:
             path: /var/lib/kubelet
             type: Directory
-        - name: pods-mount-dir
-          hostPath:
-            path: /var/lib/kubelet/pods
-            type: Directory
         - name: pods-cloud-data
           hostPath:
             path: /var/lib/cloud/data
@@ -109,5 +106,5 @@ spec:
             path: /dev
             type: Directory
         - name: secret-cinderplugin
-          secret:
-            secretName: csi-cloud-config
+          configMap:
+            name: cloud-config
