@@ -18,9 +18,9 @@
     url: https://download.docker.com/linux/ubuntu/gpg
     state: present
 
-# add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+# add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 - name: Set up the stable repository
-  apt_repository: repo='deb https://download.docker.com/linux/ubuntu bionic stable' state=present
+  apt_repository: repo='deb https://download.docker.com/linux/ubuntu {{ hostvars[inventory_hostname].ansible_distribution_release }} stable' state=present
 
 # apt-get update; apt install -y docker-ce=<version>
 - name: Install docker-ce
