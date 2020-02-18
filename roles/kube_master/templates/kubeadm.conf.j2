@@ -1,3 +1,5 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+---
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: InitConfiguration
 bootstrapTokens:
@@ -21,6 +23,9 @@ apiServer:
   certSANs:
     - {{ ansible_local_ip }}
     - {{ ansible_public_ip }}
+{% for ip in extra_api_endpoints %}
+    - {{ ip }}
+{% endfor %}
   extraArgs:
     cloud-provider: "external"
     runtime-config: storage.k8s.io/v1=true

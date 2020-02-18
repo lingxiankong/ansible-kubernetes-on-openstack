@@ -24,8 +24,10 @@
   pre_tasks:
     - name: Wait for cloud init to finish
       raw: cloud-init status --wait
+
     - name: Install python 3
       raw: test -e /usr/bin/python || (apt -y update && apt install -y python3-minimal)
+
     - name: Install packages
       apt:
         name: "{{ packages }}"
@@ -47,8 +49,10 @@
           - zlib1g-dev
           - jq
           - net-tools
+
     - name: Pin pip to 9.0.3
       shell: pip3 install pip==9.0.3
+
     - name: Install pypi libraries
       pip:
         name: "{{ libraries }}"
@@ -57,10 +61,13 @@
         libraries:
           - python-openstackclient
           - httpie
+
     - name: Gather facts after python installation
       setup: filter=ansible_*
+
     - name: Build hosts file
       lineinfile: dest=/etc/hosts line="{{ ansible_local_ip }} {{ ansible_hostname }}" state=present
+
     - name: Disable swap memory
       shell: swapoff -a
   roles:
