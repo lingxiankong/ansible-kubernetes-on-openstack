@@ -4,16 +4,16 @@
   hosts: localhost
 
   vars:
-    reource_prefix: "lingxiank8s"
+    reource_prefix: "lingxian-k8s"
     worker_node_number: 2
-    boot_from_vol: false
-    image: 6f526ede-0b07-4e7f-be83-84f474ebcd2e
-    key_name: "lingxian_key"
+    boot_from_vol: true
+    image: 0da75c8a-787d-48cd-bb74-e979fc5ceb58
+    key_name: "lingxian_pc"
     private_key_file: "/home/lingxiankong/.ssh/id_rsa"
-    flavor: UKF2-std-2x2
-    external_network_name: "vlan2803"
+    flavor: c1.c4r8
+    external_network_name: "public-net"
     subnet_cidr: "10.1.0.0/26"
-    pod_ip_range: 192.168.0.0/16
+    pod_ip_range: "10.244.0.0/16"
 
   roles:
     - k8s_openstack_resource
@@ -28,8 +28,8 @@
     - name: Wait for cloud init to finish
       raw: cloud-init status --wait
 
-    - name: Install python 2
-      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+    - name: Install python 3
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python3-minimal)
 
     - name: Install packages
       apt:
@@ -38,12 +38,12 @@
         update_cache: yes
       vars:
         packages:
-          - python-pip
+          - python3-pip
           - ansible
           - unzip
           - build-essential
-          - python-dev
-          - python-setuptools
+          - python3-dev
+          - python3-setuptools
           - libffi-dev
           - libxslt1-dev
           - libxml2-dev
@@ -54,7 +54,7 @@
           - net-tools
 
     - name: Pin pip to 9.0.3
-      shell: pip install pip==9.0.3
+      shell: pip3 install pip==9.0.3
 
     - name: Install pypi libraries
       pip:
@@ -63,6 +63,7 @@
       vars:
         libraries:
           - python-openstackclient
+          - python-octaviaclient
           - httpie
 
     - name: Gather facts after python installation

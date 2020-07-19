@@ -1,2 +1,2 @@
 ---
-docker_version: 18.06.3~ce~3-0~ubuntu
+docker_version: 5:19.03.4~3-0~ubuntu-bionic

@@ -1,35 +1,32 @@
-apiVersion: kubeadm.k8s.io/v1beta1
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+---
+apiVersion: kubeadm.k8s.io/v1beta2
 kind: InitConfiguration
 bootstrapTokens:
   - token: "9a08jv.c0izixklcxtmnze7"
     description: "kubeadm bootstrap token"
     ttl: "24h"
+nodeRegistration:
+  kubeletExtraArgs:
+    cloud-provider: "external"
 
 ---
-apiVersion: kubeadm.k8s.io/v1beta1
+apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
 clusterName: "lingxian-k8s"
-kubernetesVersion: v{{ k8s_version }}
+kubernetesVersion: {{ kubernetes_version | default('latest') }}
 networking:
   podSubnet: {{ pod_ip_range }}
-imageRepository: "k8s.gcr.io"
-useHyperKubeImage: true
 apiServer:
   certSANs:
     - {{ ansible_local_ip }}
     - {{ ansible_public_ip }}
+{% for ip in extra_api_endpoints %}
+    - {{ ip }}
+{% endfor %}
   extraArgs:
     cloud-provider: "external"
-    enable-admission-plugins: NodeRestriction
     runtime-config: storage.k8s.io/v1=true
 controllerManager:
   extraArgs:
     cloud-provider: "external"
-    external-cloud-volume-plugin: "openstack"
-    cloud-config: "/etc/kubernetes/cloud-config"
-  extraVolumes:
-    - name: cloud-config
-      hostPath: "/etc/kubernetes/cloud-config"
-      mountPath: "/etc/kubernetes/cloud-config"
-      readOnly: true
-      pathType: File

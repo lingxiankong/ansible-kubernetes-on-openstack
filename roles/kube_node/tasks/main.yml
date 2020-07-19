@@ -2,7 +2,7 @@
 - name: Check if kubelet.conf exists
   stat:
     path: "/etc/kubernetes/kubelet.conf"
-  register: kubelet_conf
+  register: kubelet_conf_exists
 
 - name: Join worker node to the cluster
   block:
@@ -18,16 +18,6 @@
       template:
         src: cloud-config.j2
         dest: /etc/kubernetes/cloud-config
-    - name: Check if kubelet config file needs change
-      shell: grep -q "external" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-      register: check_kubelet
-      ignore_errors: True
-    - name: Modify kubelet arguments
-      replace:
-        path: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-        regexp: '(.*)KUBELET_KUBECONFIG_ARGS=(.*)$'
-        replace: '\1KUBELET_KUBECONFIG_ARGS=--cloud-provider=external \2'
-      when: check_kubelet.rc != 0
     - name: restart kubelet service
       systemd:
         state: restarted
@@ -36,4 +26,4 @@
     - name: Join to cluster
       shell: kubeadm join --config {{ ansible_env.HOME }}/kubeadm.conf
       when: bootstrap | bool
-  when: not kubelet_conf.stat.exists
+  when: not kubelet_conf_exists.stat.exists

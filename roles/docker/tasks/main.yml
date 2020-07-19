@@ -1,5 +1,5 @@
 ---
-# apt-get install -y apt-transport-https ca-certificates curl
+# apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 - name: Install packages
   apt:
     name: "{{ packages }}"
@@ -10,6 +10,7 @@
       # allowing you to add external HTTPS sources to your APT sources list.
       - apt-transport-https
       - ca-certificates
+      - software-properties-common
       - curl
 
 # curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -33,11 +34,12 @@
   copy:
     content: |
       {
-        "log-driver": "json-file",
         "exec-opts": ["native.cgroupdriver=systemd"],
+        "log-driver": "json-file",
         "log-opts": {
           "max-size": "50m"
-        }
+        },
+        "storage-driver": "overlay2"
       }
     dest: /etc/docker/daemon.json
     owner: root
