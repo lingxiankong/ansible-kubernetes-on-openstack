@@ -145,12 +145,13 @@
   loop: "{{ range(0, worker_node_number|int)|list }}"
 
 - name: Gather facts about vms
-  os_server_facts:
+  os_server_info:
     server: "{{ reource_prefix }}-*"
+  register: vm_info
 
 - name: Wait for ssh ready for vms
   wait_for: port=22 host={{ item.public_v4 }} search_regex=OpenSSH timeout=300 delay=5
-  with_items: "{{ openstack_servers }}"
+  with_items: "{{ vm_info.openstack_servers }}"
 
 - name: Add VMs to inventory
   add_host:
@@ -163,7 +164,7 @@
     ansible_ssh_private_key_file: "{{ private_key_file }}"
     ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     subnet_id: "{{ subnet.id }}"
-  with_items: "{{ openstack_servers }}"
+  with_items: "{{ vm_info.openstack_servers }}"
 
 - name: Setup master group
   add_host:
@@ -176,7 +177,7 @@
     ansible_ssh_private_key_file: "{{ private_key_file }}"
     subnet_id: "{{ subnet.id }}"
   when: item.name | regex_search('(master)')
-  with_items: "{{ openstack_servers }}"
+  with_items: "{{ vm_info.openstack_servers }}"
 
 - name: Setup nodes group
   add_host:
@@ -189,4 +190,4 @@
     ansible_ssh_private_key_file: "{{ private_key_file }}"
     subnet_id: "{{ subnet.id }}"
   when: item.name | regex_search('(worker)')
-  with_items: "{{ openstack_servers }}"
+  with_items: "{{ vm_info.openstack_servers }}"
