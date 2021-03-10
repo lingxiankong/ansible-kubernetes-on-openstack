@@ -94,7 +94,7 @@
     name: "{{ reource_prefix }}-master-{{ item }}"
     boot_from_volume: "{{ boot_from_vol | bool }}"
     image: "{{ image }}"
-    volume_size: 15
+    volume_size: 30
     key_name: "{{ key_name }}"
     nics: port-name={{ reource_prefix }}-master-{{ item }}
     security_groups:
