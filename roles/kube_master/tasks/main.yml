@@ -42,6 +42,7 @@
 - name: Allow pod on master
   shell: kubectl taint nodes --all node-role.kubernetes.io/master-
   when: allow_pod_on_master|bool
+  ignore_errors: true
 
 - name: Install Calico
-  shell: kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
+  shell: kubectl apply -f {{ calico_manifest_url }}

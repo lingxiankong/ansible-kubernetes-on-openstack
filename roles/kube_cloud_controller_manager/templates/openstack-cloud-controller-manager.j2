@@ -35,10 +35,10 @@ spec:
           args:
             - /bin/openstack-cloud-controller-manager
             - --v=1
-            - --cloud-config=/etc/cloud/cloud-config
+            - --cloud-config=/etc/cloud/cloud.conf
             - --cloud-provider=openstack
             - --use-service-account-credentials=false
-            - --cluster-name={{ reource_prefix }}-cluster
+            - --cluster-name=lingxian-k8s
             - --leader-elect=false
           volumeMounts:
             - mountPath: /etc/cloud
@@ -46,5 +46,5 @@ spec:
               readOnly: true
       volumes:
       - name: cloud-config-volume
-        configMap:
-          name: cloud-config
+        secret:
+          secretName: cloud-config

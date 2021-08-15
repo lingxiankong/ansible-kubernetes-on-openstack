@@ -1,7 +1,9 @@
----
+k8s_version: "1.22.0"
+kubernetes_version: v{{ k8s_version }}
 pod_ip_range: "10.244.0.0/16"
 allow_pod_on_master: false
 extra_api_endpoints: []
+calico_manifest_url: https://docs.projectcalico.org/manifests/calico.yaml
 
 auth_url: http://192.168.121.15/identity/v3/
 user_id: 3fd32295751a41aca601021eba681a29

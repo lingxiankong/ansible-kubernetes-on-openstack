@@ -1,6 +1,6 @@
 #jinja2: lstrip_blocks: "True", trim_blocks: "True"
 ---
-apiVersion: kubeadm.k8s.io/v1beta2
+apiVersion: kubeadm.k8s.io/v1beta3
 kind: InitConfiguration
 bootstrapTokens:
   - token: "9a08jv.c0izixklcxtmnze7"
@@ -11,7 +11,7 @@ nodeRegistration:
     cloud-provider: "external"
 
 ---
-apiVersion: kubeadm.k8s.io/v1beta2
+apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
 clusterName: "lingxian-k8s"
 kubernetesVersion: {{ kubernetes_version | default('latest') }}

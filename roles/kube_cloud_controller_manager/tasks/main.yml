@@ -4,8 +4,11 @@
 
 - name: Copy the cloud-config manifest file
   template:
-    src: cloud-config.j2
-    dest: "{{ ansible_env.HOME }}/openstack-cloud-controller-manager/cloud-config.yaml"
+    src: cloud.conf.j2
+    dest: "{{ ansible_env.HOME }}/cloud.conf"
+
+- name: Create cloud config secret
+  shell: kubectl create secret -n kube-system generic cloud-config --from-file={{ ansible_env.HOME }}/cloud.conf
 
 - name: Copy CCM manifest file
   template:

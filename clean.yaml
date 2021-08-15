@@ -15,6 +15,20 @@
         delete_public_ip: true
         wait: yes
 
+    - name: Remove floating IP associated with masters
+      os_floating_ip:
+        state: absent
+        purge: true
+        server: "{{ reource_prefix }}-master-{{ item }}"
+      loop: "{{ range(0, master_node_number|int)|list }}"
+
+    - name: Remove floating IP associated with workers
+      os_floating_ip:
+        state: absent
+        purge: true
+        server: "{{ reource_prefix }}-worker-{{ item }}"
+      loop: "{{ range(0, worker_node_number|int)|list }}"
+
     - name: Remove master nodes
       os_server:
         state: absent

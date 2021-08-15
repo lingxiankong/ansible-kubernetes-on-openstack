@@ -39,9 +39,8 @@ spec:
       serviceAccount: csi-cinder-controller
       containers:
         - name: csi-attacher
-          image: quay.io/k8scsi/csi-attacher:v2.0.0
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.1.0
           args:
-            - "--v=5"
             - "--csi-address=$(ADDRESS)"
             - "--timeout=3m"
           env:
@@ -52,10 +51,13 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v1.4.0
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--timeout=3m"
+            - "--default-fstype=ext4"
+            - "--feature-gates=Topology=true"
+            - "--extra-create-metadata"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -64,9 +66,11 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v1.2.2
+          image: k8s.gcr.io/sig-storage/csi-snapshotter:v4.0.0
           args:
             - "--csi-address=$(ADDRESS)"
+            - "--timeout=3m"
+            - "--extra-create-metadata"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -75,10 +79,11 @@ spec:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
         - name: csi-resizer
-          image: quay.io/k8scsi/csi-resizer:v0.3.0
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.1.0
           args:
-            - "--v=5"
             - "--csi-address=$(ADDRESS)"
+            - "--timeout=3m"
+            - "--handle-volume-inuse-error=false"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -86,28 +91,45 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: liveness-probe
+          image: k8s.gcr.io/sig-storage/livenessprobe:v2.2.0
+          args:
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - mountPath: /var/lib/csi/sockets/pluginproxy/
+              name: socket-dir
         - name: cinder-csi-plugin
           image: docker.io/k8scloudprovider/cinder-csi-plugin:latest
-          args :
+          args:
             - /bin/cinder-csi-plugin
-            - "--v=5"
-            - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--cloud-config=$(CLOUD_CONFIG)"
             - "--cluster=$(CLUSTER_NAME)"
           env:
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://csi/csi.sock
             - name: CLOUD_CONFIG
-              value: /etc/config/cloud-config
+              value: /etc/config/cloud.conf
             - name: CLUSTER_NAME
-              # (lingxian): Change if needed.
+              # Keep consistent with k8s cluster name
               value: lingxian-k8s
           imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 9808
+              name: healthz
+              protocol: TCP
+          # The probe
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            periodSeconds: 60
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -118,5 +140,5 @@ spec:
         - name: socket-dir
           emptyDir:
         - name: secret-cinderplugin
-          configMap:
-            name: cloud-config
+          secret:
+            secretName: cloud-config

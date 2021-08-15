@@ -19,8 +19,8 @@
     update_cache: yes
   vars:
     packages:
-      - kubelet
-      - kubectl
-      - kubeadm
+      - kubelet={{ k8s_version }}-00
+      - kubectl={{ k8s_version }}-00
+      - kubeadm={{ k8s_version }}-00
 
-# - import_tasks: install_kube_prompt_tasks.yml
+- import_tasks: install-k9s.yml

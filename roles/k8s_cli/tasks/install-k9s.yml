@@ -1,0 +1,7 @@
+---
+- name: Create k9s binary
+  unarchive:
+    remote_src: yes
+    creates: /usr/local/bin/k9s
+    src: https://github.com/derailed/k9s/releases/download/{{ k9s_version }}/k9s_Linux_x86_64.tar.gz
+    dest: /usr/local/bin
