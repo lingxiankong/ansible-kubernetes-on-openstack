@@ -1,33 +1,19 @@
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: csi-cinder-controller
-  namespace: kube-system
+# This YAML file contains CSI Controller Plugin Sidecars
+# external-attacher, external-provisioner, external-snapshotter
+# external-resize, liveness-probe
 
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: csi-cinder-controller-service
-  namespace: kube-system
-  labels:
-    app: csi-cinder-controllerplugin
-spec:
-  selector:
-    app: csi-cinder-controllerplugin
-  ports:
-    - name: dummy
-      port: 12345
-
----
-kind: StatefulSet
+kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: csi-cinder-controllerplugin
   namespace: kube-system
 spec:
-  serviceName: "csi-cinder-controller-service"
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: csi-cinder-controllerplugin
@@ -36,13 +22,14 @@ spec:
       labels:
         app: csi-cinder-controllerplugin
     spec:
-      serviceAccount: csi-cinder-controller
+      serviceAccount: csi-cinder-controller-sa
       containers:
         - name: csi-attacher
-          image: k8s.gcr.io/sig-storage/csi-attacher:v3.1.0
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.3.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--timeout=3m"
+            - "--leader-election=true"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -51,13 +38,14 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.0
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.0.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--timeout=3m"
             - "--default-fstype=ext4"
             - "--feature-gates=Topology=true"
             - "--extra-create-metadata"
+            - "--leader-election=true"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -66,11 +54,12 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-snapshotter
-          image: k8s.gcr.io/sig-storage/csi-snapshotter:v4.0.0
+          image: k8s.gcr.io/sig-storage/csi-snapshotter:v4.2.1
           args:
             - "--csi-address=$(ADDRESS)"
             - "--timeout=3m"
             - "--extra-create-metadata"
+            - "--leader-election=true"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -79,11 +68,12 @@ spec:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
         - name: csi-resizer
-          image: k8s.gcr.io/sig-storage/csi-resizer:v1.1.0
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.3.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--timeout=3m"
             - "--handle-volume-inuse-error=false"
+            - "--leader-election=true"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -92,7 +82,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: liveness-probe
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.2.0
+          image: k8s.gcr.io/sig-storage/livenessprobe:v2.5.0
           args:
             - "--csi-address=$(ADDRESS)"
           env:
@@ -102,7 +92,7 @@ spec:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
         - name: cinder-csi-plugin
-          image: docker.io/k8scloudprovider/cinder-csi-plugin:latest
+          image: docker.io/k8scloudprovider/cinder-csi-plugin:v1.23.0
           args:
             - /bin/cinder-csi-plugin
             - "--endpoint=$(CSI_ENDPOINT)"
@@ -114,8 +104,7 @@ spec:
             - name: CLOUD_CONFIG
               value: /etc/config/cloud.conf
             - name: CLUSTER_NAME
-              # Keep consistent with k8s cluster name
-              value: lingxian-k8s
+              value: kubernetes
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 9808
@@ -136,9 +125,15 @@ spec:
             - name: secret-cinderplugin
               mountPath: /etc/config
               readOnly: true
+            # - name: cacert
+            #   mountPath: /etc/cacert
+            #   readOnly: true
       volumes:
         - name: socket-dir
           emptyDir:
         - name: secret-cinderplugin
           secret:
             secretName: cloud-config
+        # - name: cacert
+        #   hostPath:
+        #     path: /etc/cacert

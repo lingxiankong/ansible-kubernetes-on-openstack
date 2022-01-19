@@ -1,5 +1,5 @@
 ---
-ccm_image: "docker.io/k8scloudprovider/openstack-cloud-controller-manager:latest"
+ccm_image: "docker.io/k8scloudprovider/openstack-cloud-controller-manager:v1.23.0"
 
 auth_url: http://192.168.121.15/identity/v3/
 user_id: 3fd32295751a41aca601021eba681a29

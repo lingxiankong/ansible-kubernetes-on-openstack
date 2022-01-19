@@ -5,6 +5,8 @@ reource_prefix: "lingxiank8s"
 master_node_number: 1
 worker_node_number: 3
 boot_from_vol: false
+master_volume_size: 15
+worker_volume_size: 10
 image: "6f526ede-0b07-4e7f-be83-84f474ebcd2e"
 key_name: "lingxian_key"
 private_key_file: ""

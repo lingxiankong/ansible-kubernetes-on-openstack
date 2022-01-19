@@ -1,10 +1,6 @@
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: csi-cinder-node
-  namespace: kube-system
+# This YAML file contains driver-registrar & csi driver nodeplugin API objects,
+# which are necessary to run csi nodeplugin for cinder.
 
----
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -21,11 +17,11 @@ spec:
     spec:
       tolerations:
         - operator: Exists
-      serviceAccount: csi-cinder-node
+      serviceAccount: csi-cinder-node-sa
       hostNetwork: true
       containers:
         - name: node-driver-registrar
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.1.0
+          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.4.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
@@ -45,7 +41,7 @@ spec:
             - name: registration-dir
               mountPath: /registration
         - name: liveness-probe
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.2.0
+          image: k8s.gcr.io/sig-storage/livenessprobe:v2.5.0
           args:
             - --csi-address=/csi/csi.sock
           volumeMounts:
@@ -57,7 +53,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: docker.io/k8scloudprovider/cinder-csi-plugin:latest
+          image: docker.io/k8scloudprovider/cinder-csi-plugin:v1.23.0
           args:
             - /bin/cinder-csi-plugin
             - "--endpoint=$(CSI_ENDPOINT)"
@@ -72,14 +68,15 @@ spec:
             - containerPort: 9808
               name: healthz
               protocol: TCP
+          # The probe
           livenessProbe:
             failureThreshold: 5
             httpGet:
               path: /healthz
               port: healthz
             initialDelaySeconds: 10
-            timeoutSeconds: 10
-            periodSeconds: 60
+            timeoutSeconds: 3
+            periodSeconds: 10
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -92,6 +89,9 @@ spec:
             - name: secret-cinderplugin
               mountPath: /etc/config
               readOnly: true
+            # - name: cacert
+            #   mountPath: /etc/cacert
+            #   readOnly: true
       volumes:
         - name: socket-dir
           hostPath:
@@ -112,3 +112,6 @@ spec:
         - name: secret-cinderplugin
           secret:
             secretName: cloud-config
+        # - name: cacert
+        #   hostPath:
+        #     path: /etc/cacert
